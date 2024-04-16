@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">&#x0A;<refactoring comment="Rename resource &apos;mbed_blinky&apos; to &apos;NS30AutoHDKEN&apos;" description="Rename resource &apos;mbed_blinky&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="/mbed_blinky" name="NS30AutoHDKEN" stamp="1577242352993" updateReferences="true"/>&#x0A;<refactoring comment="Rename resource &apos;NS30AutoHDKEN&apos; to &apos;mbed_blinky&apos;" description="Rename resource &apos;NS30AutoHDKEN&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="/NS30AutoHDKEN" name="mbed_blinky" stamp="1577250819091" updateReferences="true"/>
+</session>

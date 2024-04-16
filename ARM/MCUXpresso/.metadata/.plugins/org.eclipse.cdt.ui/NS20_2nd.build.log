@@ -1,0 +1,11 @@
+10:39:26 **** Incremental Build of configuration Debug for project NS20_2nd ****
+make -j4 all 
+Invoking: Cross ARM GNU Print Size
+arm-none-eabi-size --format=berkeley "NS20_2nd.elf"
+   text	   data	    bss	    dec	    hex	filename
+  84728	   2596	   3636	  90960	  16350	NS20_2nd.elf
+Finished building: NS20_2nd.siz
+ 
+
+10:39:27 Build Finished. 0 errors, 0 warnings. (took 1s.312ms)
+

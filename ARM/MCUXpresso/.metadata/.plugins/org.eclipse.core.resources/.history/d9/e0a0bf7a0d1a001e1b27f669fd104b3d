@@ -1,0 +1,419 @@
+/*==============================================================================================
+| Project	: Digital Move
+|
+| File		: needle.cpp
+|
+| Purpose	: 針穴検査
+|
+| Compiler	: ARM - 
+|
+| History	: Version	Date		Content											Author
+|			  V*.**		2018/--/--	First Edition									N.Ishikawa
++==============================================================================================*/
+#include "common.h"
+#include "gram.h"
+
+#include "needle.h"
+#include "cmd_act.h"
+#include "holetbl.h"
+
+
+/*==============================================================================================
+| Prototype
++==============================================================================================*/
+void start_detect_hole(uchar ledch);
+void stop_detect_hole(void);
+bool check_hole(NDETPARAM *pndet);
+bool judge_hole(LEDPARAM *pledprm, const HOLEPARAM *phole);
+bool judge_hole_none(LEDPARAM *pledprm, const HOLEPARAM *phole);
+uchar get_sensrank(SENSRANK *prank);
+void get_sensrank_general(SENSRANK *prank);
+void get_sensrank_ns30(SENSRANK *prank);
+void get_sensrank_0100(SENSRANK *prank);
+void get_sensrank_h296(SENSRANK *prank);
+void get_sensrank_h800(SENSRANK *prank);
+void get_sensrank_f150(SENSRANK *prank);
+
+
+/*==============================================================================================
+| Table
++==============================================================================================*/
+const HOLEDETECT hole_single[] = {							// 単独針検穴定義テーブル
+	{ hole_single_a },										// Motor A
+	{ hole_single_b },										// Motor B
+	{ hole_single_c },										// Motor C
+	{ hole_single_d },										// Motor D
+};
+
+const HOLEDETECT hole_multi[] = {							// 複合針検穴定義テーブル
+	{ hole_multi_a },										// Motor A
+	{ hole_multi_b },										// Motor B
+	{ hole_multi_c },										// Motor C
+	{ hole_multi_d },										// Motor D
+};
+
+#if (CALSELECT & CALF150)									// F150 ?
+const uchar convert_lt[] = {
+		0x00, 0x03, 0x02, 0x01								// LT:00→00, 01→11, 10→10, 11→01
+};
+#endif
+
+
+/*==============================================================================================
+| Function
++==============================================================================================*/
+/*======================================================================================
+| Declaration :	start_detect_hole
+| Description : 針穴検出開始
+| Parameters  :	uchar ndettype
+| Returns	  : n/a
++======================================================================================*/
+void start_detect_hole(uchar ndettype)
+{
+	// TODO:アプリ要求でカウンタ進んでしまう場合あるので仮の処置 (A~D対応必要)
+	ndetprm.motcnt[SELMOTOR_A] = motprm[SELMOTOR_A].cnt;	// A Motor (コマンド要求"DA"でカウントずれるので取得)
+	ndetprm.motcnt[SELMOTOR_B] = motprm[SELMOTOR_B].cnt;	// B Motor (コマンド要求"DA"でカウントずれるので取得)
+	ndetprm.motcnt[SELMOTOR_C] = motprm[SELMOTOR_C].cnt;	// C Motor (コマンド要求"DA"でカウントずれるので取得)
+	ndetprm.motcnt[SELMOTOR_D] = motprm[SELMOTOR_D].cnt;	// D Motor (コマンド要求"DA"でカウントずれるので取得)
+	
+	ndetprm.status._ch = ndettype;
+	ndetprm.status._busy = true;
+	ndetprm.status._result = false;
+	if(check_hole(&ndetprm)){								// 針検実施 => 穴検出
+		PTRC_P = 0;											// PTRC ON
+		LED2_P = 1;											// MBED LED2 ON
+		ndetprm.lkm1cnt++;									// 針穴検出回数+1
+
+#if (CALSELECT & CALH296 || CALSELECT & CALF150)			// H296 ?
+		timeout_led1.attach_us(&stop_detect_hole, 10500.0);	// 10.5ms後にPTR OFF (元ネタのまま)
+#endif
+
+	}
+	else{													// 針検実施 => 穴未検出
+		ndetprm.lkm1cnt = 0;								// 針穴検出回数クリア
+	}
+	LED1_P = 1;												// MBED LED1 ON
+
+#if (CALSELECT & CALH296)									// H296 ?
+	ndetprm.status._ch = decparam.b._ledsel;
+#endif
+
+}
+
+/*======================================================================================
+| Declaration :	stop_detect_hole
+| Description : 針穴検出終了
+| Parameters  :	n/a
+| Returns	  : n/a
++======================================================================================*/
+void stop_detect_hole(void)
+{
+	PTRC_P = 1;												// PTRC OFF
+	LED2_P = 0;												// MBED LED2 OFF
+	LED1_P = 0;												// MBED LED1 OFF
+}
+
+/*======================================================================================
+| Declaration :	check_hole
+| Description : 穴検査処理
+| Parameters  :	NDETSTS *pndet
+| Returns	  : false:穴未検出, true:穴検出
++======================================================================================*/
+bool check_hole(NDETPARAM *pndet)
+{
+	const HOLEPARAM *phole;
+	LEDPARAM *pledprm;
+	
+	pledprm = ledprm;
+	if(NDETSINGLE == pndet->status._ch){										// 単独針検 ?
+		do {
+			if(pledprm->ndettype == 0){
+				pndet->rank = get_sensrank(&pledprm->rank);
+				phole = &hole_single[pledprm->motid].hole[pledprm->rank.byte];
+				if(phole->c){													// 穴数あり(中央に穴あり) ?
+					pndet->status._result = judge_hole(pledprm, phole);			// 穴判定
+				}
+			}
+			pledprm++;
+		} while(pledprm->period);
+	}
+	else{																		// 複合針検 ?
+		do {
+			if(pledprm->ndettype == 1){
+				pndet->rank = get_sensrank(&pledprm->rank);
+				phole = &hole_multi[pledprm->motid].hole[pledprm->rank.byte];
+				if(phole->c){													// 穴数あり(中央に穴あり) ?
+					pndet->status._result = judge_hole_none(pledprm, phole);	// 穴なし位置判定
+					if(pndet->status._result == false){
+						break;
+					}
+					pndet->status._result = judge_hole(pledprm, phole);			// 穴判定
+					if(pndet->status._result == false){							// 針穴なし ?
+						break;
+					}
+				}
+			}
+			pledprm++;
+		} while(pledprm->period);
+	}
+	return(pndet->status._result);
+}
+
+/*======================================================================================
+| Declaration :	judge_hole
+| Description : 穴判定処理
+| Parameters  :	LEDPARAM *pledprm
+|				HOLEPARAM *phole
+| Returns	  : false:穴なし, true:穴あり
++======================================================================================*/
+bool judge_hole(LEDPARAM *pledprm, const HOLEPARAM *phole)
+{
+	ulong cnt;
+	bool judge = false;
+	
+	pledprm->edgemax = (pledprm->offset + pledprm->period + phole->r) % pledprm->period;
+	pledprm->edgemin = (pledprm->offset + pledprm->period - phole->l) % pledprm->period;
+	cnt = motprm[pledprm->motid].cnt % pledprm->period;
+	
+	if(pledprm->edgemin <= pledprm->edgemax){ 						// 穴が0をまたいでいない
+		if(cnt >= pledprm->edgemin && cnt <= pledprm->edgemax){		// 穴位置？
+			judge = true;
+		}
+		else{														// 穴位置でない ?
+			judge = false;
+		}
+	}
+	else{															// 穴が0をまたいでいる
+		if(cnt >= pledprm->edgemin || cnt <= pledprm->edgemax){		// 穴位置？
+			judge = true;
+		}
+		else{														// 穴位置でない ?
+			judge = false;
+		}
+	}
+	
+	return(judge);
+}
+
+/*======================================================================================
+| Declaration :	judge_hole_none
+| Description : 穴なし位置の判定
+|				※現状では、1/12時間指定（H296対応） => 汎用的にするには検討必要!!
+| Parameters  :	LEDPARAM *pledprm
+|				HOLEPARAM *phole
+| Returns	  : false:穴なし, true:穴あり
++======================================================================================*/
+bool judge_hole_none(LEDPARAM *pledprm, const HOLEPARAM *phole)
+{
+	ulong cnt, min, max;
+
+	if(!pledprm->holenone){											// 穴なし位置無し ?
+		return(true);
+	}
+
+	pledprm->edgemax = (pledprm->offset + pledprm->period + phole->r) % pledprm->period;
+	pledprm->edgemin = (pledprm->offset + pledprm->period - phole->l) % pledprm->period;
+	cnt = motprm[pledprm->motid].cnt % 720;							// 12時間の余り算出
+	
+	if(pledprm->edgemin <= pledprm->edgemax){ 						// 穴が0を跨いでいない ?
+		if(pledprm->offset <= 30){									// 0-30をプラス側にオフセット
+			//min = pledprm->edgemin + pledprm->holenonepos;
+			//max = pledprm->edgemax + pledprm->holenonepos;
+			min = pledprm->edgemin + 660;
+			max = pledprm->edgemax + 660;
+		}
+		else{														// 31-59をマイナス側にオフセット
+			//min = pledprm->edgemin + pledprm->holenonepos - 60;		// 600;
+			//max = pledprm->edgemax + pledprm->holenonepos - 60;		// 600;
+			min = pledprm->edgemin + 600;
+			max = pledprm->edgemax + 600;
+		}
+	}
+	else{															// 穴が0を跨ぐ ?
+		//min = pledprm->edgemin + ledprm->holenonepos - 60;			// 600;
+		//max = pledprm->edgemax + ledprm->holenonepos;				// 660;
+		min = pledprm->edgemin + 600;
+		max = pledprm->edgemax + 660;
+	}
+	
+	if(cnt >= min && cnt <= max){									// 11時範囲の場合は穴なし判定
+		return(false);
+	}
+	return(true);
+}
+
+
+/*==============================================================================================
+| 感度ランク
++==============================================================================================*/
+/*======================================================================================
+| Declaration :	get_sensrank
+| Description : 感度ランクの取得
+| Parameters  :	SENSRANK *prank
+| Returns	  : n/a
++======================================================================================*/
+uchar get_sensrank(SENSRANK *prank)
+{
+#if (CALSELECT & CALNS30)								// NS30 ?
+	get_sensrank_ns30(prank);
+#elif (CALSELECT & CAL0100)								// 0100 ?
+	get_sensrank_0100(prank);
+#elif (CALSELECT & CALH296)								// H296 ?
+	get_sensrank_h296(prank);
+#elif (CALSELECT & CALH800)								// H800/H874 ?
+	get_sensrank_h800(prank);
+#elif (CALSELECT & CALF150)								// F150 ?
+	get_sensrank_f150(prank);
+#else													// General ?
+	get_sensrank_general(prank);
+#endif
+
+	return(prank->byte);
+}
+
+/*======================================================================================
+| LEDTime, PTRAdj, LEDAdj から感度を算出し、感度小→大に並び替える
+|
+|								LEDTime	PTRADJ	LEDADJ
+|	感度小 : 	sensrank = 0	=>	00		1111	00
+|			sensrank = 1	=>	00		1111	01
+|	  ↕							:		:		:
+|			sensrank = 254 =>	11		0000	10
+|	感度大 :	sensrank = 255 =>	11		0000,	11
++======================================================================================*/
+/*======================================================================================
+| General
++======================================================================================*/
+void get_sensrank_general(SENSRANK *prank)
+{
+	prank->b._tim1 = ~LEDTIM1_P;						// LEDTIME 取得
+	prank->b._tim0 = ~LEDTIM0_P;
+	prank->b._ptr3 = PTRADJ3_P;							// PTRADJ 取得
+	prank->b._ptr2 = PTRADJ2_P;
+	prank->b._ptr1 = PTRADJ1_P;
+	prank->b._ptr0 = PTRADJ0_P;
+	prank->b._led1 = ~LEDADJ1_P;						// LEDADJ 取得
+	prank->b._led0 = ~LEDADJ0_P;
+	prank->byte = SENSRANK_MAX - prank->byte;			// 感度小→感度大へ並び替え
+}
+
+/*======================================================================================
+| NS30
++======================================================================================*/
+void get_sensrank_ns30(SENSRANK *prank)
+{
+	DigitalOut TEST_P(p20);
+
+#if (CALSELECT & CALNS30)								// NS30 ?
+	TEST_P = 0;
+	prank->b._tim1 = 0;									// LEDTIME
+	prank->b._tim0 = 0;
+	prank->b._ptr3 = PTRADJ3_P;							// PTRADJ 取得
+	prank->b._ptr2 = PTRADJ2_P;
+	prank->b._ptr1 = PTRADJ1_P;
+	prank->b._ptr0 = PTRADJ0_P;
+	prank->b._led1 = ~LEDADJ1_P;						// LEDADJ 取得
+	prank->b._led0 = ~LEDADJ0_P;
+	prank->byte = SENSRANK_MAX - prank->byte;			// 感度小→感度大へ並び替え
+	TEST_P = 1;
+#endif
+}
+
+/*======================================================================================
+| 0100
++======================================================================================*/
+void get_sensrank_0100(SENSRANK *prank)
+{
+#if (CALSELECT & CAL0100)								// 0100 ?
+	prank->b._tim1 = 0;									// LEDTIME
+	prank->b._tim0 = 0;
+	prank->b._ptr3 = 0;									// PTRADJ 取得
+	prank->b._ptr2 = PTRADJ2_P;
+	prank->b._ptr1 = PTRADJ1_P;
+	prank->b._ptr0 = PTRADJ0_P;
+	prank->b._led1 = ~LEDADJ1_P;						// LEDADJ 取得
+	prank->b._led0 = ~LEDADJ0_P;
+	prank->byte = SENSRANK_MAX - prank->byte;			// 感度小→感度大へ並び替え
+#endif
+}
+
+/*======================================================================================
+| H296
++======================================================================================*/
+void get_sensrank_h296(SENSRANK *prank)
+{
+#if (CALSELECT & CALH296)								// H296 ?
+	prank->byte = ~decparam.b._ledtim & 0x03;			// LEDTIME 取得
+	prank->byte <<= 4;
+	prank->byte |= decparam.b._ptradj & 0x0f;			// PTRADJ 取得
+	prank->byte <<= 2;
+	prank->byte |= ~decparam.b._ledadj & 0x03;			// LEDADJ 取得
+	prank->byte = SENSRANK_MAX - prank->byte;			// 感度小→感度大へ並び替え
+	if(prank->byte > 64){
+		prank->byte = 64;
+	}
+#endif
+}
+
+/*======================================================================================
+| H800/H874
++======================================================================================*/
+void get_sensrank_h800(SENSRANK *prank)
+{
+#if (CALSELECT & CALH800)								// H800/H874 ?
+	// HWピン数制限により検出ランクは固定とする
+	//LEDTIM1_P = 1;									// 通常時の設定 (1.5ms)
+	//LEDTIM0_P = 0;
+
+	//LEDTIM1_P = 0;										// 充電警告時の設定 (1.0ms)
+	//LEDTIM0_P = 1;
+	//PTRADJ3_P = 0;										// PTR:75Ω
+	//PTRADJ2_P = 1;
+	//PTRADJ1_P = 0;
+	//PTRADJ0_P = 0;
+	//LEDADJ1_P = 0;
+	//LEDADJ0_P = 0;
+
+	prank->b._tim1 = 1;									// LEDTIME 取得 (~LEDTIM)
+	prank->b._tim0 = 0;
+	prank->b._ptr3 = 0;									// PTRADJ 取得 (PTRADJ)
+	prank->b._ptr2 = 1;
+	prank->b._ptr1 = 0;
+	prank->b._ptr0 = 0;
+	prank->b._led1 = 1;									// LEDADJ 取得 (~LEDADJ)
+	prank->b._led0 = 1;
+	prank->byte = SENSRANK_MAX - prank->byte;			// 感度小→感度大へ並び替え
+	prank->byte >>= 2;									// LEDADJは存在しないのでシフト
+#endif
+}
+
+/*======================================================================================
+| F150
++======================================================================================*/
+void get_sensrank_f150(SENSRANK *prank)
+{
+#if (CALSELECT & CALF150)								// F150 ?
+	driveic.ndet[driveic.ledno].b._lt = convert_lt[driveic.ndet[driveic.ledno].b._lt];
+	prank->byte = driveic.ndet[driveic.ledno].byte;
+	prank->byte = SENSRANK_MAX - prank->byte;			// 感度小→感度大へ並び替え
+
+	// テーブルデータ簡素化のため実現しないランクを省く (詳細はDigitalMove設計書参照)
+	if(prank->byte >= 12 && prank->byte <= 43){			// 実在しないランク:12-43→11へ変換
+		prank->byte = 11;
+	}
+	else if(prank->byte >= 44 && prank->byte <= 55){	// 実在するランク:44-55→12-23へ変換
+		prank->byte -= 32;
+	}
+	else if(prank->byte >= 56 && prank->byte <= 87){	// 実在しないランク:56-87→23へ変換
+		prank->byte = 23;
+	}
+	else if(prank->byte >= 88 && prank->byte <= 91){	// 実在するランク:88-91→24-27へ変換
+		prank->byte -= 64;
+	}
+	else if(prank->byte >= 92){							// 実在しないランク:92以上→27へ変換
+		prank->byte = 27;
+	}
+
+
+#endif
+}

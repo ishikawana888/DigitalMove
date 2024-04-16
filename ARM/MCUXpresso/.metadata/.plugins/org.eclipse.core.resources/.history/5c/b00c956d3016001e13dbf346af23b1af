@@ -1,0 +1,417 @@
+/*==============================================================================================
+| Project	: Digital Move
+|
+| File		: main.cpp
+|
+| Purpose	: メインループ
+|
+| Compiler	: ARM - 
+|
+| History	: Version	Date		Content											Author
+|			  V*.**		2018/--/--	First Edition									N.Ishikawa
++==============================================================================================*/
+#include "common.h"
+#include "gram.h"
+
+#include "main.h"
+#include "boot.h"
+#include "cmd_act.h"
+#include "io.h"
+#include "needle.h"
+
+
+/*==============================================================================================
+| Prototype
++==============================================================================================*/
+int main(void);
+void dec_recv(void);
+
+void interrupt_motora(void);
+void interrupt_motorb(void);
+void interrupt_motorc(void);
+void interrupt_motord(void);
+void interrupt_fall_led1(void);
+void interrupt_rise_led1(void);
+void interrupt_fall_led2(void);
+void interrupt_rise_led2(void);
+
+#if (CALSELECT & CALH296)
+void interrupt_rise_decena(void);
+void interrupt_fall_decena(void);
+void interrupt_rise_dectck(void);
+#endif
+
+#if (CALSELECT & CALF150)
+void interrupt_rise_drvena(void);
+void interrupt_fall_drvena(void);
+void interrupt_rise_drvtck(void);
+#endif
+
+void calc_motcnt(MOTPARAM *ptr, uchar dir);
+
+
+/*==============================================================================================
+| Function
++==============================================================================================*/
+/*======================================================================================
+| Declaration :	main
+| Description : メインループ
+| Parameters  :	n/a
+| Returns	  : n/a
++======================================================================================*/
+int main(void)
+{
+	boot();													// 起動処理
+
+	while(1){
+		cmd_recv();											// コマンド受信処理
+		cmd_send();											// コマンド送信処理
+		dec_recv();											// デコードIC受信処理
+		//lcd_act();											// LCD出力処理
+	}
+}
+
+
+/*==============================================================================================
+| デコードIC受信処理
++==============================================================================================*/
+/*======================================================================================
+| Declaration :	dec_recv
+| Description : デコードIC受信処理(デコードIC使用Calのみ)
+| Parameters  :	n/a
+| Returns	  : n/a
++======================================================================================*/
+void dec_recv(void)
+{
+	if(interrupt._needle){									// 針検パラメータ受信 ?
+		__disable_irq();									// 割込み禁止
+		interrupt._needle = 0;
+		
+		switch(decparam.b._ledsel){							// 指定CHの針検実施(0:1ch, 1:2ch) => 穴検出 ?
+		case LEDCH1:										// LED CH1 ?
+			start_detect_hole(NDETMULTI);					// 複合針検実施
+			break;
+		case LEDCH2:										// LED CH2 ?
+			start_detect_hole(NDETSINGLE);					// 単独針検実施
+			break;
+		default:											// LED CH3 or CH4 ?
+			break;
+		}
+		__enable_irq();										// 割込み許可
+	}
+}
+
+
+/*==============================================================================================
+| Interrupt
++==============================================================================================*/
+/*======================================================================================
+| Declaration :	interrupt_motora
+| Description : モータA 割り込み
+| Parameters  :	n/a
+| Returns	  : n/a
++======================================================================================*/
+void interrupt_motora(void)
+{
+	MOTPARAM *ptr;
+
+	if(!MOTORAINT_P) return;								// ゴミ除去
+	ptr = &motprm[SELMOTOR_A];								// Motor A パラメータ
+	if(ptr->max){											// パラメータあり ?
+		if(!MOTORADIR_P){									// 正転 ?
+			calc_motcnt(ptr, 1);
+		}
+		else {												// 逆転 ?
+			calc_motcnt(ptr, 0);
+		}
+	}
+}
+
+/*======================================================================================
+| Declaration :	interrupt_motorb
+| Description : モータB 割り込み
+| Parameters  :	n/a
+| Returns	  : n/a
++======================================================================================*/
+void interrupt_motorb(void)
+{
+	MOTPARAM *ptr;
+	
+	if(!MOTORBINT_P) return;								// ゴミ除去
+	ptr = &motprm[SELMOTOR_B];								// Motor B パラメータ
+	if(ptr->max){											// パラメータあり ?
+		if(!MOTORBDIR_P){									// 正転 ?
+			calc_motcnt(ptr, 1);
+		}
+		else {												// 逆転 ?
+			calc_motcnt(ptr, 0);
+		}
+	}
+}
+
+/*======================================================================================
+| Declaration :	interrupt_motorc
+| Description : モータC 割り込み
+| Parameters  :	n/a
+| Returns	  : n/a
++======================================================================================*/
+void interrupt_motorc(void)
+{
+#if ((CALSELECT & CALH800) || (CALSELECT & CALF150))		// H800/F150 ?
+	MOTPARAM *ptr;
+	
+	if(!MOTORCINT_P) return;								// ゴミ除去
+	ptr = &motprm[SELMOTOR_C];								// Motor C パラメータ
+	if(ptr->max){											// パラメータあり ?
+		if(!MOTORCDIR_P){									// 正転 ?
+			calc_motcnt(ptr, 1);
+		}
+		else {												// 逆転 ?
+			calc_motcnt(ptr, 0);
+		}
+	}
+#endif
+}
+
+/*======================================================================================
+| Declaration :	interrupt_motord
+| Description : モータD 割り込み
+| Parameters  :	n/a
+| Returns	  : n/a
++======================================================================================*/
+void interrupt_motord(void)
+{
+#if ((CALSELECT & CALH800) || (CALSELECT & CALF150))		// H800/F150 ?
+	MOTPARAM *ptr;
+	
+	if(!MOTORDINT_P) return;								// ゴミ除去
+	ptr = &motprm[SELMOTOR_D];								// Motor D パラメータ
+	if(ptr->max){											// パラメータあり ?
+		if(!MOTORDDIR_P){									// 正転 ?
+			calc_motcnt(ptr, 1);
+		}
+		else {												// 逆転 ?
+			calc_motcnt(ptr, 0);
+		}
+	}
+#endif
+}
+
+/*======================================================================================
+| Declaration :	calc_motcnt
+| Description : モータカウント算出
+| Parameters  :	MOTPARAM *ptr -> 
+|				uchar dir	  -> 
+| Returns	  : n/a
++======================================================================================*/
+void calc_motcnt(MOTPARAM *ptr, uchar dir)
+{
+	if(dir){
+		ptr->cnt++;
+		if(ptr->cnt > ptr->max - 1){
+			ptr->cnt = 0;
+		}
+	}
+	else{
+		if(!ptr->cnt){
+			ptr->cnt = ptr->max;
+		}
+		ptr->cnt--;
+	}
+	
+	//syssts.lcdevent = LCD_MOTOR;
+}
+
+
+/*======================================================================================
+| Declaration :	interrupt_fall_led1
+| Description : Port13(LED1)立下り割り込み
+| Parameters  :	n/a
+| Returns	  : n/a
++======================================================================================*/
+void interrupt_fall_led1(void)
+{
+	switch(periled._ledsel){								// 指定CHの針検実施(0:1ch, 1:2ch)
+	case LEDCH1:											// LED CH1 ?
+		start_detect_hole(NDETSINGLE);						// 単独針検実施
+		break;
+	case LEDCH2:											// LED CH2 ?
+		start_detect_hole(NDETMULTI);						// 複合針検実施
+		break;
+	default:												// LED CH3 or CH4 ?
+		break;
+	}
+}
+
+/*======================================================================================
+| Declaration :	interrupt_rise_led1
+| Description : Port13(LED1)立上り割り込み
+| Parameters  :	n/a
+| Returns	  : n/a
++======================================================================================*/
+void interrupt_rise_led1(void)
+{
+	stop_detect_hole();										// 針検停止
+}
+
+/*======================================================================================
+| Declaration :	interrupt_fall_led2
+| Description : Port14(LED2)立下り割り込み
+| Parameters  :	n/a
+| Returns	  : n/a
++======================================================================================*/
+void interrupt_fall_led2(void)
+{
+	switch(periled._ledsel){								// 指定CHの針検実施(0:1ch, 1:2ch)
+	case LEDCH1:											// LED CH1 ?
+		start_detect_hole(NDETSINGLE);						// 単独針検実施
+		break;
+	case LEDCH2:											// LED CH2 ?
+		start_detect_hole(NDETMULTI);						// 複合針検実施
+		break;
+	default:												// LED CH3 or CH4 ?
+		break;
+	}
+}
+
+/*======================================================================================
+| Declaration :	interrupt_rise_led2
+| Description : Port14(LED2)立上り割り込み
+| Parameters  :	n/a
+| Returns	  : n/a
++======================================================================================*/
+void interrupt_rise_led2(void)
+{
+	stop_detect_hole();										// 針検停止
+}
+
+#if (CALSELECT & CALH296)
+/*======================================================================================
+| Declaration :	interrupt_rise_decena
+| Description : Port9(ENA)立上り割り込み
+| Parameters  :	n/a
+| Returns	  : n/a
++======================================================================================*/
+void interrupt_rise_decena(void)
+{
+	decparam.dword = 0;										// デコードIC針検パラメータクリア
+	cnt_extrecv = 0;										// デコードIC受信カウンタクリア
+}
+
+/*======================================================================================
+| Declaration :	interrupt_fall_decena
+| Description : Port9(ENA)立下り割り込み
+| Parameters  :	n/a
+| Returns	  : n/a
++======================================================================================*/
+void interrupt_fall_decena(void)
+{
+
+}
+
+/*======================================================================================
+| Declaration :	interrupt_rise_dectck
+| Description : Port10(CLK)立上り割り込み
+| Parameters  :	n/a
+| Returns	  : n/a
++======================================================================================*/
+void interrupt_rise_dectck(void)
+{
+	if(DENAINT_P){											// DENA => H ?
+		if(++cnt_extrecv < 25){								// bit23-0:針検データ
+			decparam.dword <<= 1;
+			if(DDATA_P){									// DDATA => H ?
+				decparam.dword |= 1;
+			}
+		}
+		else{												// bit24:針検動作結果出力要求
+			if(decparam.b._type == 1 || !decparam.b._type){	// LLH or LLL ?
+				interrupt._needle = 1;						// 針検要求
+			}
+		}
+	}
+}
+#endif
+
+#if (CALSELECT & CALF150)
+/*======================================================================================
+| Declaration :	interrupt_rise_drvena
+| Description : Port9(ENA)立上り割り込み
+| Parameters  :	n/a
+| Returns	  : n/a
++======================================================================================*/
+void interrupt_rise_drvena(void)
+{
+}
+
+/*======================================================================================
+| Declaration :	interrupt_fall_drvena
+| Description : Port9(ENA)立下り割り込み
+| Parameters  :	n/a
+| Returns	  : n/a
++======================================================================================*/
+void interrupt_fall_drvena(void)
+{
+	//drvparam.word = 0;											// ドライブICパラメータクリア
+	*(ushort*)driveic.recv = 0;
+	cnt_extrecv = 0;											// ドライブIC受信カウンタクリア
+}
+
+/*======================================================================================
+| Declaration :	interrupt_rise_drvtck
+| Description : Port10(CLK)立上り割り込み
+| Parameters  :	n/a
+| Returns	  : n/a
++======================================================================================*/
+void interrupt_rise_drvtck(void)
+{
+	if(!DENAINT_P){												// DENA => L ?
+		//if(++cnt_extrecv <= 16){								// bit15-0:コマンド+パラメータ
+		//drvparam.word <<= 1;
+		driveic.recv.word <<= 1;
+		if(DCOM_P){												// DCOM => H ?
+			driveic.recv.word |= 1;
+			//drvparam.word |= 1;
+		}
+		if(++cnt_extrecv == 4){									// 4bit受信(実行コマンド) ?
+			//if(drvparam.word <= 0x7){							// コマンド:0x0-0x7 ?
+			if(driveic.recv.word <= 0x7){						// コマンド:0x0-0x7 ?
+				switch(*(ushort*)&driveic.recv){
+				case 0x1:										// LED1 針検
+				case 0x2:										// LED2 針検
+				case 0x3:										// LED3 針検
+					interrupt._needle = 1;						// 針検要求
+					break;
+				}
+				//drvparam.word = 0;							// ドライブICパラメータクリア
+				driveic.recv.word = 0;
+				cnt_extrecv = 0;								// ドライブIC受信カウンタクリア
+			}
+		}
+		else if(cnt_extrecv == 16){											// 16bit受信(データ設定コマンド) ?
+			//switch(drvparam.b._cmd){
+			switch(driveic.recv.b._cmd){
+			case 0x8:														// LED set1 (LED1/2 Param)
+				driveic.ndet[0].byte = driveic.recv.b._param >> 5;			// LED1 Parameter
+				driveic.ndet[1].byte = (driveic.recv.b._param & 0x1f) << 2;	// LED2 Parameter
+				//drv_ndetprm[0].byte = drvparam.b._param >> 5;				// LED1
+				//drv_ndetprm[1].byte = (drvparam.b._param & 0x1f) << 2;		// LED2
+				break;
+			case 0x9:														// LED set2 (LED2/3 Param)
+				driveic.ndet[1].byte |= (driveic.recv.b._param & 0xc00) >> 10;// LED2 Parameter
+				driveic.ndet[2].byte = (driveic.recv.b._param & 0x3ff) >> 3;	// LED3 Parameter
+				//drv_ndetprm[1].byte |= (drvparam.b._param & 0xc00) >> 10;	// LED2
+				//drv_ndetprm[2].byte = (drvparam.b._param & 0x3ff) >> 3;		// LED3
+				break;
+			}
+			//drvparam.word = 0;												// ドライブICパラメータクリア
+			driveic.recv.word = 0;
+			cnt_extrecv = 0;												// ドライブIC受信カウンタクリア
+		}
+		//}
+		//else{
+		//}
+	}
+}
+#endif
+

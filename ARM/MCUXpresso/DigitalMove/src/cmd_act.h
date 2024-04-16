@@ -1,0 +1,81 @@
+/*==============================================================================================
+| Project	: Digital Move
+|
+| File		: cmd_act.c
+|
+| Purpose	: コマンド処理
+|
+| Compiler	: ARM - 
+|
+| History	: Version	Date		Content											Author
+|			  V*.**		2018/--/--	First Edition									N.Ishikawa
++==============================================================================================*/
+#ifndef CMDACT_H_
+#define CMDACT_H_
+
+/*==============================================================================================
+| Define
++==============================================================================================*/
+// 応用要求
+#define		SEND_REQ				0x01							// cmd_status: 送信要求
+#define		RECV_UCCRX				0x20							// cmd_status: Received UART0(UCCRX)
+#define		RECV_DEBUG				0x40							// cmd_status: Received UART1(DEBUG)
+
+#define		RESP_CMD_MAX			(128 + 1)						// Command 128byte + NULL
+
+
+#define	CMD_TEMP_MODE		0x10
+#define	CMD_TEMP_SEND		0x20
+#define	CMD_REL_TIMELIM		0xfa
+#define	CMD_ADJ_AF1			0xd1
+#define	CMD_ADJ_AF2			0xd2
+#define	CMD_ADJ_AF3			0xd3
+#define	CMD_ADJ_AF4			0xd4
+#define	CMD_MODE_NDETOFF	0x8e
+#define	CMD_MODE_NDETON		0x8f
+#define	CMD_MODE_TEMP		0x8a
+#define	CMD_MODE_PS			0x85
+#define	CMD_READ_RAM1		0xa9
+#define	CMD_READ_RAM2		0xaa
+#define	CMD_READ_RAM3		0xab
+#define	CMD_READ_LOG		0xa5
+#define	CMD_SYNC_1HZH		0xce
+#define	CMD_SYNC_1HZL		0xcf
+#define	CMD_PERIIC_1ST		0xc3
+#define CMD_PERIIC_2ND		0x3c
+#define	CMD_OSCIC_1ST		0xcc
+#define	CMD_OSCIC_2ND		0xcc
+
+#define	LOGID_LOG			10
+#define	LOGID_LOG2			28
+#define	LOGID_TRACESTA		20
+#define	LOGID_TRACEEND		27
+
+
+/*==============================================================================================
+| Structure
++==============================================================================================*/
+typedef struct {
+	const char *str;
+	void (*set)(uchar*);
+	void (*get)(uchar*);
+} COMMAND_TBL;
+
+
+/*==============================================================================================
+| External Table
++==============================================================================================*/
+
+
+/*==============================================================================================
+| External Function
++==============================================================================================*/
+void cmd_recv(void);										// コマンド受信
+void cmd_send(void);										// コマンド送信
+
+void cmd_get_count(uchar *pdat);
+void cmd_get_ndetinfo(uchar *pdat);
+
+
+#endif /* CMDACT_H_ */
+

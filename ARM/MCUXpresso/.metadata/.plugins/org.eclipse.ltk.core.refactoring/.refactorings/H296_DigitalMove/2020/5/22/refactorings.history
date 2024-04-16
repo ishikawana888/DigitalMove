@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">&#x0A;<refactoring comment="Rename resource &apos;H296_DigitalMove/src&apos; to &apos;work&apos;" description="Rename resource &apos;src&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="src" name="work" stamp="1590388074792" updateReferences="true"/>&#x0A;<refactoring comment="Rename resource &apos;H296_DigitalMove/work&apos; to &apos;src&apos;" description="Rename resource &apos;work&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="work" name="src" stamp="1590389000877" updateReferences="true"/>
+</session>

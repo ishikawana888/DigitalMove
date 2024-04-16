@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">&#x0A;<refactoring comment="Rename resource &apos;DigitalMove&apos; to &apos;AutoVerify&apos;" description="Rename resource &apos;DigitalMove&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="/DigitalMove" name="AutoVerify" stamp="1639524037846" updateReferences="true"/>&#x0A;<refactoring comment="Rename resource &apos;AutoVerify&apos; to &apos;DigitalMove&apos;" description="Rename resource &apos;AutoVerify&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="/AutoVerify" name="DigitalMove" stamp="1639524143324" updateReferences="true"/>
+</session>

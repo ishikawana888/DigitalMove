@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<section name="ExternalProjectImportWizard">
+		<item key="WizardProjectsImportPage.STORE_COPY_PROJECT_ID" value="true"/>
+		<item key="WizardProjectsImportPage.STORE_ARCHIVE_SELECTED" value="true"/>
+		<item key="WizardProjectsImportPage.STORE_NESTED_PROJECTS" value="true"/>
+		<list key="WizardProjectsImportPage.STORE_DIRECTORIES">
+			<item value=""/>
+		</list>
+		<list key="WizardProjectsImportPage.STORE_ARCHIVES">
+			<item value="C:\Users\ishikawana\Downloads\DigitalMove_gnuarmeclipse_lpc1768.zip"/>
+			<item value="C:\Users\ishikawana\Downloads\NS30_gnuarmeclipse_lpc1768 (3).zip"/>
+			<item value="C:\Users\ishikawana\Downloads\NS30_gnuarmeclipse_lpc1768 (2).zip"/>
+			<item value="C:\Users\ishikawana\Downloads\NS20_2nd_gnuarmeclipse_lpc1768 (2).zip"/>
+			<item value="C:\Users\ishikawana\Downloads\NS20_2nd_gnuarmeclipse_lpc1768 (1).zip"/>
+			<item value="C:\Users\ishikawana\Downloads\NS20_2nd_gnuarmeclipse_lpc1768.zip"/>
+			<item value="C:\Users\ishikawana\Downloads\NS30DummyMove_gnuarmeclipse_lpc1768 (1).zip"/>
+			<item value="C:\Users\ishikawana\Downloads\DigitalMove_H296_gnuarmeclipse_lpc1768.zip"/>
+			<item value="C:\Users\ishikawana\Downloads\H296_DigitalMove_gnuarmeclipse_lpc1768 (1).zip"/>
+			<item value="C:\Users\ishikawana\Downloads\H296_DigitalMove_gnuarmeclipse_lpc1768.zip"/>
+			<item value="C:\Users\ishikawana\Downloads\NS30DummyMove_gnuarmeclipse_lpc1768.zip"/>
+			<item value="C:\Users\ishikawana\Downloads\mbed_blinky_gnuarmeclipse_lpc1768.zip"/>
+		</list>
+	</section>
+	<section name="com.crt.quickstart.views.wizards.examples.QSExampleSelectionPage">
+		<item key="dirname" value="C:\Users\ishikawana\Downloads"/>
+	</section>
+</section>

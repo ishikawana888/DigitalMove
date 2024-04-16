@@ -1,0 +1,119 @@
+/*==============================================================================================
+| Project	: 
+|
+| File		: gram.h
+|
+| Purpose	: グローバル変数の定義
+|
+| Compiler	: Panasonic - Debug Factory Builder V5.1.1.0
+|
+| History	: Version	Date		Content											Author
+|		      			2020/--/--	First Edition				    				N.Ishikawa
++==============================================================================================*/
+#ifndef GRAM_H_
+#define GRAM_H_
+
+#ifdef	_BOOT_
+#define	global	 
+#else
+#define	global	extern
+#endif
+
+#include "cmd_act.h"
+#include "common.h"
+
+
+/*==============================================================================================
+| RAM (通常モード)											RAM Address : 00000-002FFh
++==============================================================================================*/
+/*======================================================================================
+| 割り込み内使用変数
++======================================================================================*/
+global struct _interrupt {									// 00000h : 割り込み処理フラグ
+	uchar _needle		:1;									//	b0	: 針検要求
+	uchar _rsv2			:1;									//	b1	: 予約
+	uchar _tm2			:1;									//	b2	: CPU Timer2
+	uchar _tm3			:1;									//	b3	: CPU Timer3
+	uchar _tm9			:1;									//	b4	: CPU Timer9
+	uchar _rsv			:2;
+	uchar _irq1			:1;									//	b7	: IRQ1
+} interrupt;
+global uchar reserve1[7];									// 00001-00007h : 予約
+
+/*======================================================================================
+| System
++======================================================================================*/
+global MOTPARAM motprm[IDNO_MAX];
+global LEDPARAM ledprm[IDNO_MAX];
+global NDETPARAM ndetprm;
+global PORTASSIGN port_assign[PORT_MAX];
+global DRVIC_NDETPARAM drv_ndetprm[3];
+
+global struct _syssts {										// 00008-0001Fh : システム関連
+	struct {												// 00008-0000Bh : FLAG1
+		uchar _ndeton	:1;									//	b0	  : 
+		uchar _ndettype	:1;									//	b1	  :
+		uchar _ptr		:1;									//  b2	  :
+		uchar _rsv		:5;
+	} flg;
+	uchar lcdevent;											// LCDイベント
+	uchar reserve[30];										// 00012-0001Fh : 予約
+} syssts;
+
+global union _decparam {									// デコーダパラメータ
+	ulong dword;											// Dword Access
+	struct {												// Bit Access
+		uchar _rsv1		:4;									// 	b0-3   :
+		uchar _ledsel	:2;									//	b4-5   : LED選択信号
+		uchar _rsv2		:2;									// 	b6-7   :
+		uchar _vref		:4;									// 	b8-11  : コンパレータ基準電圧設定
+		uchar _ptradj	:4;									//	b12-15 : フォトTr感度設定
+		uchar _ledtim	:2;									//	b16-17 : LED発光時間設定
+		uchar _ledadj	:2;									//	b18-19 : LED電流設定
+		uchar _rsv3		:1;									// 	b20	   :
+		uchar _type		:3;									//	b21-23 : コマンド種別
+		uchar _rsv4		:8;									// 	b24-31 :
+	} b;
+} decparam;
+
+global union _drvparam {									// ドライブICパラメータ <V1.02>
+	ushort word;											// Word Access
+	struct {												// Bit Access
+		ushort _param	:12;								//	b0-11  : パラメータ
+		ushort _cmd		:4;									//  b12-15 : コマンド
+	} b;
+} drvparam;
+
+global struct _periledch {									// ペリフェラルLEDパラメータ
+	uchar _ledsel		:2;									// 	b0-1   : LEC CH (0-3)
+	uchar _rsv1			:6;									//	b2-7   :
+} periled;
+
+global struct _driveic_ndet {
+	DRVIC_NDETPARAM drv_ndetprm[3];
+	uchar ledno;
+} driveic_ndet;
+
+global uchar cnt_extrecv;									// 外部IC受信カウント
+
+
+
+/*======================================================================================
+| cmd_act.c
++======================================================================================*/
+global uchar resp_cmd[RESP_CMD_MAX];						// 応答コマンド
+global uchar cmd_status;									// コマンドステータス
+															// 	<--   Bit   -->
+															// 	7 6 5 4 3 2 1 0
+															// 	| | | | | | | +-> 送信要求
+															// 	| | | +-+-+-+---> Reserved
+															//	| | +-----------> Received UART0(UCCRX) <V1.02>
+															//	| +-------------> Received UART1(DEBUG)	<V1.02>
+															//	+---------------> Received UART4(I-LAN) <V1.02>
+
+
+
+#endif	// GRAM_H_
+
+
+

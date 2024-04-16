@@ -1,0 +1,368 @@
+/*==============================================================================================
+| Project	: Digital Move
+|
+| File		: common.h
+|
+| Purpose	: 共通定義
+|
+| Compiler	: ARM - 
+|
+| History	: Version	Date		Content											Author
+|			  V*.**		2020/--/--	First Edition									N.Ishikawa
++==============================================================================================*/
+#ifndef COMMON_H_
+#define COMMON_H_
+
+
+typedef	unsigned char	uchar;
+typedef	unsigned int 	uint;
+typedef	unsigned short	ushort;
+typedef	unsigned long	ulong;
+
+/*==============================================================================================
+| Include
++==============================================================================================*/
+#include <string.h>	
+#include <stdio.h>
+#include "mbed.h"
+#include "math.h"
+
+#include "io.h"
+
+
+/*==============================================================================================
+| Pragma
++==============================================================================================*/
+
+
+/*==============================================================================================
+| Define
++==============================================================================================*/
+/*======================================================================================
+| Compile Option
++======================================================================================*/
+#define		FUNCTION_FLAG			0x0000							// Function Select
+#define		FUNC_RESERVE1			0x0001							// 予約
+#define		FUNC_RESERVE2			0x0002							// 予約
+#define		FUNC_RESERVE3			0x0004							// 予約
+#define		FUNC_RESERVE4			0x0008							// 予約
+#define		FUNC_RESERVE5			0x0010							// 予約
+#define		FUNC_RESERVE6			0x0020							// 予約
+#define		FUNC_RESERVE7			0x0040							// 予約
+#define		FUNC_RESERVE8			0x0080							// 予約
+#define		FUNC_RESERVE9			0x0100							// 予約
+#define		FUNC_RESERVE10			0x0200							// 予約
+#define		FUNC_RESERVE11			0x0400							// 予約
+#define		FUNC_RESERVE12			0x0800							// 予約
+#define		FUNC_RESERVE13			0x1000							// 予約
+#define		FUNC_RESERVE14			0x2000							// 予約
+#define		FUNC_RESERVE15			0x4000							// 予約
+#define		FUNC_RESERVE16			0x8000							// 予約
+
+#ifdef DEBUG
+#endif
+
+/*======================================================================================
+| Cal Select
+|	=> 通常はポート固定の "General" で対応する。
+|	         ※Cal.0100,NS30,H296はFPGA変更なしで対応するためコンパイルオプションを使う。
+|		(過去の産物と互換性をとるため。)
+|	=> コンパイラの [Build Configuration] で定義を追加し、プログラムでの定義を不要とした。
+|		General : CALSELECT=0
+|		CAL0100 : CALSELECT=1, CAL0100=1
+|		CALNS30 : CALSELECT=2, CALNS30=2
+|		CAL0100 : CALSELECT=4, CALH296=4
++======================================================================================*/
+#if false
+#define		CALSELECT				0x0002							// Cal Select
+#define		CALGENERAL				0x0000							// General
+#define		CAL0100					0x0001							// 0100
+#define		CALNS30					0x0002							// NS30
+#define		CALH296					0x0004							// H296
+#endif
+
+/*======================================================================================
+| Code
++======================================================================================*/
+// Code
+#ifndef NULL
+#define		NULL					0x00							// NULL
+#endif
+#define		UC_NULL					0x00							// NULL
+#define		NA						0x00							// N/A
+#define		SPC						0x20							// SPACE
+
+// Result Code
+#define 	E_OK					0x00							// OK
+#define		E_NG					0xff							// NG
+
+
+/*======================================================================================
+| System
++======================================================================================*/
+#define		FUNC_DSB				0								// 機能無効
+#define		FUNC_ENB				1								// 機能有効
+
+#define		PORT_MAX				32								// ポート最大数
+#define		IDNO_MAX				26								// ID最大数(Motor:A-Z)
+
+// Motor
+#define		SELMOTOR_A				0								// A motor
+#define		SELMOTOR_B				1								// B motor
+#define		SELMOTOR_C				2								// C motor
+#define		SELMOTOR_D				3								// D motor
+
+// LED ch
+#define		LEDCH1					0								// LED CH1
+#define 	LEDCH2					1								// LED CH2
+#define 	LEDCH3					2								// LED CH3
+
+// 針検種別
+#define		NDETSINGLE				0								// 単独針検
+#define		NDETMULTI				1								// 複合針検
+
+// PORT
+#define 	MOTPORT1				5
+#define 	MOTPORT2				7
+#define 	MOTPORT3				9
+#define 	MOTPORT4				11
+#define		LEDPORT1				13
+#define		LEDPORT2				14
+#define		LEDPORT3				15
+
+#if (CALSELECT & CALNS30)											// NS30 ?
+#define		SENSRANK_MAX			0x3f							// 感度ランク最大値
+#elif (CALSELECT & CAL0100)											// 0100 ?
+#define		SENSRANK_MAX			0x1f							// 感度ランク最大値
+#else																// その他 ?
+#define		SENSRANK_MAX			0xff							// 感度ランク最大値
+#endif
+
+
+
+#if 0
+/*======================================================================================
+| Motor
++======================================================================================*/
+#define		MOTOR_A					0								// A motor
+#define		MOTOR_B					1								// B motor
+#define		MOTOR_C					2								// C motor
+#define		MOTOR_D					3								// D motor
+#define		MOTOR_A_SP				4								// 
+#define		PULSE_S					0								// 正転パルス
+#define		PULSE_G					1								// 逆転パルス
+#define		PULSE_F					2								// 正転高速パルス
+#define		PULSE_L					3								// 負荷補償パルス
+#define		MOTOR_MAX				1								// モータ最大数(Aモータのみ)
+
+// Aモータ
+#define		MOTORA_COUNT_MAX		43200							// Aモータ最大カウント数(60*60*12)
+#define		MOTORA_THRESHOLD		29800							// Aモータ運針方向閾値 (29800以内:正転(MAS), 29801以上:逆転(MAG))
+#define		MOTORA_CONTSTEP_MAX		240								// Aモータ連続運針最大ステップ数(4周分)
+#define		BACKLASH_A				50								// Aモータバックラッシュ
+#define		BACKLASH_A_TEST			1								// Aモータバックラッシュ(検査モード時) <Ver.A8>
+#endif
+
+
+/*======================================================================================
+| Memory Map
++======================================================================================*/
+// 内蔵RAM領域 00000-00FFFh
+#define		RAM_START				0x00000							// CPU RAM Start
+#define		RAM_END					0x00FFF							// CPU RAM End
+
+
+/*======================================================================================
+| BIT Definition
++======================================================================================*/
+#define		BIT0					0x00000001
+#define		BIT1					0x00000002
+#define		BIT2					0x00000004
+#define		BIT3					0x00000008
+#define		BIT4					0x00000010
+#define		BIT5					0x00000020
+#define		BIT6					0x00000040
+#define		BIT7					0x00000080
+#define		BIT8					0x00000100
+#define		BIT9					0x00000200
+#define		BIT10					0x00000400
+#define		BIT11					0x00000800
+#define		BIT12					0x00001000
+#define		BIT13					0x00002000
+#define		BIT14					0x00004000
+#define		BIT15					0x00008000
+#define		BIT16					0x00010000
+#define		BIT17					0x00020000
+#define		BIT18					0x00040000
+#define		BIT19					0x00080000
+#define		BIT20					0x00100000
+#define		BIT21					0x00200000
+#define		BIT22					0x00400000
+#define		BIT23					0x00800000
+#define		BIT24					0x01000000
+#define		BIT25					0x02000000
+#define		BIT26					0x04000000
+#define		BIT27					0x08000000
+#define		BIT28					0x10000000
+#define		BIT29					0x20000000
+#define		BIT30					0x40000000
+#define		BIT31					0x80000000
+
+
+/*==============================================================================================
+| Structure
++==============================================================================================*/
+typedef union {														// 感度ランク
+	uchar byte;														// Byte Access
+	struct {														// Bit Access
+		uchar _led0		:1;											//	b0	: LEDADJ0
+		uchar _led1		:1;											//	b1	: LEDADJ1
+		uchar _ptr0		:1;											//	b2	: PTRADJ0
+		uchar _ptr1		:1;											//	b3	: PTRADJ1
+		uchar _ptr2		:1;											//	b4	: PTRADJ2
+		uchar _ptr3		:1;											//	b5	: PTRADJ3
+		uchar _tim0		:1;											//  b6	: LEDTIME0
+		uchar _tim1		:1;											//  b7	: LEDTIME1
+	} b;
+} SENSRANK;
+
+typedef struct {													// モータパラメータ
+	ulong max;														// Motor Step Max
+	ulong cnt;														// Motor Count
+	//uchar port;													// Motor Port No (unused)
+	//uchar dummy;
+} MOTPARAM;
+
+typedef struct {													// LEDパラメータ
+	ulong period;													// 穴周期
+	ulong offset;													// オフセット
+	//ulong width;													// 穴幅 (unused)
+	ulong edgemax;													// 穴最大数
+	ulong edgemin;													// 穴最小数
+	ushort holenonepos;												// 穴なし位置
+	//uchar port;													// LED Port No (unused)
+	uchar motid;													// LED Motor ID
+	uchar ndettype;													// 針検種別
+	uchar holenone;													// 穴なし有無
+	SENSRANK rank;													// 感度ランク
+} LEDPARAM;
+
+typedef struct {													// ポート割当てID
+	uchar motid;													// Motor ID
+	uchar ledid;													// LED ID
+} PORTASSIGN;
+
+typedef struct {													// 針穴検出数
+	uchar l;														// 左側
+	uchar c;														// 中央
+	uchar r;														// 右側
+} HOLEPARAM;
+
+typedef struct {													// 複合針検穴設定構造体
+	const HOLEPARAM *hole;
+} HOLEDETECT;
+
+typedef struct {													// 針検パラメータ
+	struct {
+		uchar _ch		:2;											//  b0-1: 針検CH	 (0-3)
+		uchar _rsv		:4;
+		uchar _busy		:1;											//	b6	: 針検状態 (0:未実施,	1:実施中)
+		uchar _result	:1;											// 	b7	: 針検結果 (0:失敗,	1:成功)
+	} status;
+	uchar rank;														// 感度ランク
+	uchar lkm1cnt;													// 針穴検出回数
+	uchar rsv;
+} NDETPARAM;
+
+
+/*======================================================================================
+| 関数定義テーブル (通常モード/検査モード/りゅうず操作)
++======================================================================================*/
+typedef struct {													// 関数定義テーブル
+	void (*func)(void);												// 処理関数ポインタ
+} FUNCDEF_TBL;
+
+typedef struct {													// 実行関数定義テーブル
+	uchar flg;														// 関数関連付けフラグ
+	const FUNCDEF_TBL *funcdef_t;									// 関数定義テーブル
+} FUNCEXE_TBL;
+
+typedef struct {													// 処理関数定義テーブル
+	uchar *flg;														// 処理要求フラグ
+	const FUNCEXE_TBL *funcexe_t;									// 実行関数定義ファイル
+} FUNCSEL_TBL;
+
+
+/*======================================================================================
+| 関数定義テーブル (ペリフェラルIC/発振IC制御)
++======================================================================================*/
+typedef struct {													// 実行関数定義テーブル
+	uchar flg;														// 関数関連付けフラグ
+	void (*func)(void);												// 処理関数ポインタ
+} FUNCTION_TBL;
+
+typedef struct {													// 処理関数定義テーブル
+	uchar *flg;														// 処理要求フラグ
+	const FUNCTION_TBL *function_t;									// 実行関数定義テーブル
+} FUNCTIONSEL_TBL;
+
+
+/*==============================================================================================
+| Union
++==============================================================================================*/
+typedef union {														// Union - Byte
+	unsigned char data;												// Byte Access
+	struct {														// Bit Access
+		unsigned char b7:1;
+		unsigned char b6:1;
+		unsigned char b5:1;
+		unsigned char b4:1;
+		unsigned char b3:1;
+		unsigned char b2:1;
+		unsigned char b1:1;
+		unsigned char b0:1;
+	} b;
+} Byte;
+
+typedef union {														// Union - Word
+	unsigned short data;											// Word Access
+	struct {														// Byte Access
+		unsigned char low;
+		unsigned char high;
+	} hl;
+	struct {														// Bit Access
+		unsigned char b15:1;
+		unsigned char b14:1;
+		unsigned char b13:1;
+		unsigned char b12:1;
+		unsigned char b11:1;
+		unsigned char b10:1;
+		unsigned char b9:1;
+		unsigned char b8:1;
+		unsigned char b7:1;
+		unsigned char b6:1;
+		unsigned char b5:1;
+		unsigned char b4:1;
+		unsigned char b3:1;
+		unsigned char b2:1;
+		unsigned char b1:1;
+		unsigned char b0:1;
+	} b;
+} Word;
+
+typedef union {														// Union - Long
+	unsigned long data;												// Long Access
+	struct {														// Word Access
+		unsigned short high;
+		unsigned short low;
+	} w;
+	struct {														// Byte Access
+		unsigned char byte3;
+		unsigned char byte2;
+		unsigned char byte1;
+		unsigned char byte0;
+	} b;
+} Long;
+
+#endif /* COMMON_H_ */
+
